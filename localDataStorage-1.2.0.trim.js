@@ -43,21 +43,100 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////*/
+// Production steps of ECMA-262, Edition 6, 22.1.2.1
+if (!Array.from) {
+  Array.from = (function () {
+    var toStr = Object.prototype.toString;
+    var isCallable = function (fn) {
+      return typeof fn === 'function' || toStr.call(fn) === '[object Function]';
+    };
+    var toInteger = function (value) {
+      var number = Number(value);
+      if (isNaN(number)) { return 0; }
+      if (number === 0 || !isFinite(number)) { return number; }
+      return (number > 0 ? 1 : -1) * Math.floor(Math.abs(number));
+    };
+    var maxSafeInteger = Math.pow(2, 53) - 1;
+    var toLength = function (value) {
+      var len = toInteger(value);
+      return Math.min(Math.max(len, 0), maxSafeInteger);
+    };
+
+    // The length property of the from method is 1.
+    return function from(arrayLike/*, mapFn, thisArg */) {
+      // 1. Let C be the this value.
+      var C = this;
+
+      // 2. Let items be ToObject(arrayLike).
+      var items = Object(arrayLike);
+
+      // 3. ReturnIfAbrupt(items).
+      if (arrayLike == null) {
+        throw new TypeError('Array.from requires an array-like object - not null or undefined');
+      }
+
+      // 4. If mapfn is undefined, then let mapping be false.
+      var mapFn = arguments.length > 1 ? arguments[1] : void undefined;
+      var T;
+      if (typeof mapFn !== 'undefined') {
+        // 5. else
+        // 5. a If IsCallable(mapfn) is false, throw a TypeError exception.
+        if (!isCallable(mapFn)) {
+          throw new TypeError('Array.from: when provided, the second argument must be a function');
+        }
+
+        // 5. b. If thisArg was supplied, let T be thisArg; else let T be undefined.
+        if (arguments.length > 2) {
+          T = arguments[2];
+        }
+      }
+
+      // 10. Let lenValue be Get(items, "length").
+      // 11. Let len be ToLength(lenValue).
+      var len = toLength(items.length);
+
+      // 13. If IsConstructor(C) is true, then
+      // 13. a. Let A be the result of calling the [[Construct]] internal method 
+      // of C with an argument list containing the single item len.
+      // 14. a. Else, Let A be ArrayCreate(len).
+      var A = isCallable(C) ? Object(new C(len)) : new Array(len);
+
+      // 16. Let k be 0.
+      var k = 0;
+      // 17. Repeat, while k < len… (also steps a - h)
+      var kValue;
+      while (k < len) {
+        kValue = items[k];
+        if (mapFn) {
+          A[k] = typeof T === 'undefined' ? mapFn(kValue, k) : mapFn.call(T, kValue, k);
+        } else {
+          A[k] = kValue;
+        }
+        k += 1;
+      }
+      // 18. Let putStatus be Put(A, "length", len, true).
+      A.length = len;
+      // 20. Return A.
+      return A;
+    };
+  }());
+}
+
 var localDataStorage = function(e) {
     return function(e) {
         "use strict";
         var r = function() {
-            return String.fromCodePoint(128);
+            return String.fromCharCode(128);
         }, t = function() {
-            return String.fromCodePoint(129);
+            return String.fromCharCode(129);
         }, n = function() {
-            return String.fromCodePoint(141);
+            return String.fromCharCode(141);
         }, o = function() {
-            return String.fromCodePoint(142);
+            return String.fromCharCode(142);
         }, i = function() {
-            return String.fromCodePoint(143);
+            return String.fromCharCode(143);
         }, a = function() {
-            return String.fromCodePoint(144);
+            return String.fromCharCode(144);
         }, f = 123456789, u = function() {
             return new Date().getTime() + ":" + (1e8 * Math.random() | 0);
         }(), s = e || u, c = function(e) {
@@ -103,7 +182,7 @@ var localDataStorage = function(e) {
             "" === u && (f = o(), -1 !== e.indexOf(f) && (e = e.substr(0, e.indexOf(f)), u = parseFloat(e))), 
             "" === u && (f = i(), -1 !== e.indexOf(f) && (e = e.substr(0, e.indexOf(f)), u = "1" === e)), 
             "" === u && (f = a(), -1 !== e.indexOf(f) && (e = e.substr(0, e.indexOf(f)), u = JSON.parse(e)));
-            return u;
+            return decodeURI(u);
         }, h = function(e) {
             var f = "", u = "";
             if (void 0 === e) throw new Error("No value to convert to");
@@ -229,6 +308,7 @@ var localDataStorage = function(e) {
         }, M = function(e) {
             return Array.from(e).reverse().join("");
         }, D = function(e, r, t, n, o, i, a, f) {
+			/*
             var u = new CustomEvent("localDataStorage", {
                 detail: {
                     message: e,
@@ -245,11 +325,15 @@ var localDataStorage = function(e) {
                 cancelable: !0
             });
             document.dispatchEvent(u);
+			*/
         }, j = function(e, r) {
             if (void 0 === e) throw new Error("Key is undefined");
             if (void 0 === r) throw new Error("Key's value is undefined");
             try {
-                localStorage.setItem(e, r);
+				console.log("here " + e + " :" + r);
+				var s1 = encodeURI(r);
+                localStorage.setItem(e, s1);
+				console.log("after " + e + " :" + r);
             } catch (e) {
                 throw !e || "QUOTA_EXCEEDED_ERR" !== e.name && "NS_ERROR_DOM_QUOTA_REACHED" !== e.name && "QuotaExceededError" !== e.name ? new Error("An error occurred writing to localStorage") : new Error("Quota exceeded for localStorage");
             }
@@ -260,268 +344,20 @@ var localDataStorage = function(e) {
             -1 !== r.indexOf(x()) && (t[n++] = localStorage.getItem(r));
             return e = A(t), 0 === e.length ? [] : e;
         }, P = function(e, r, t) {
-            for (var n = k(r)[0] + k(t)[0], o = w(n) + "", i = M(o), a = Number(i), f = l(a), u = Number((a + "").charAt(2)) + Number((a + "").charAt(1)) + Number((a + "").charAt(0)), s = S(k(t)[1]) + S(k(r)[1]) + u, c = 0; c < s; c++) f();
+			console.log(e + ":" + r + ":" + t);
+			for (var n = k(r)[0] + k(t)[0], o = w(n) + "", i = M(o), a = Number(i), f = l(a), u = Number((a + "").charAt(2)) + Number((a + "").charAt(1)) + Number((a + "").charAt(0)), s = S(k(t)[1]) + S(k(r)[1]) + u, c = 0; c < s; c++) f();
             return e += String.fromCharCode(Math.floor(966 * Math.random()) + 35) + String.fromCharCode(Math.floor(966 * Math.random()) + 35) + String.fromCharCode(Math.floor(966 * Math.random()) + 35) + String.fromCharCode(Math.floor(966 * Math.random()) + 35), 
             e = M(e), e = e.split(""), m(e, f), e = e.join("");
         }, B = function() {
             function e() {}
-            return e.codebook = {
-                " ": 0,
-                the: 1,
-                e: 2,
-                t: 3,
-                a: 4,
-                of: 5,
-                o: 6,
-                and: 7,
-                i: 8,
-                n: 9,
-                s: 10,
-                "e ": 11,
-                r: 12,
-                " th": 13,
-                " t": 14,
-                in: 15,
-                he: 16,
-                th: 17,
-                h: 18,
-                "he ": 19,
-                to: 20,
-                "\r\n": 21,
-                l: 22,
-                "s ": 23,
-                d: 24,
-                " a": 25,
-                an: 26,
-                er: 27,
-                c: 28,
-                " o": 29,
-                "d ": 30,
-                on: 31,
-                " of": 32,
-                re: 33,
-                "of ": 34,
-                "t ": 35,
-                ", ": 36,
-                is: 37,
-                u: 38,
-                at: 39,
-                "   ": 40,
-                "n ": 41,
-                or: 42,
-                which: 43,
-                f: 44,
-                m: 45,
-                as: 46,
-                it: 47,
-                that: 48,
-                "\n": 49,
-                was: 50,
-                en: 51,
-                "  ": 52,
-                " w": 53,
-                es: 54,
-                " an": 55,
-                " i": 56,
-                "\r": 57,
-                "f ": 58,
-                g: 59,
-                p: 60,
-                nd: 61,
-                " s": 62,
-                "nd ": 63,
-                "ed ": 64,
-                w: 65,
-                ed: 66,
-                "http://": 67,
-                for: 68,
-                te: 69,
-                ing: 70,
-                "y ": 71,
-                The: 72,
-                " c": 73,
-                ti: 74,
-                "r ": 75,
-                his: 76,
-                st: 77,
-                " in": 78,
-                ar: 79,
-                nt: 80,
-                ",": 81,
-                " to": 82,
-                y: 83,
-                ng: 84,
-                " h": 85,
-                with: 86,
-                le: 87,
-                al: 88,
-                "to ": 89,
-                b: 90,
-                ou: 91,
-                be: 92,
-                were: 93,
-                " b": 94,
-                se: 95,
-                "o ": 96,
-                ent: 97,
-                ha: 98,
-                "ng ": 99,
-                their: 100,
-                '"': 101,
-                hi: 102,
-                from: 103,
-                " f": 104,
-                "in ": 105,
-                de: 106,
-                ion: 107,
-                me: 108,
-                v: 109,
-                ".": 110,
-                ve: 111,
-                all: 112,
-                "re ": 113,
-                ri: 114,
-                ro: 115,
-                "is ": 116,
-                co: 117,
-                "f t": 118,
-                are: 119,
-                ea: 120,
-                ". ": 121,
-                her: 122,
-                " m": 123,
-                "er ": 124,
-                " p": 125,
-                "es ": 126,
-                by: 127,
-                they: 128,
-                di: 129,
-                ra: 130,
-                ic: 131,
-                not: 132,
-                "s,": 133,
-                "d t": 134,
-                "at ": 135,
-                ce: 136,
-                la: 137,
-                "h ": 138,
-                ne: 139,
-                "as ": 140,
-                tio: 141,
-                "on ": 142,
-                "n t": 143,
-                io: 144,
-                we: 145,
-                " a ": 146,
-                om: 147,
-                ", a": 148,
-                "s o": 149,
-                ur: 150,
-                li: 151,
-                ll: 152,
-                ch: 153,
-                had: 154,
-                this: 155,
-                "e t": 156,
-                "g ": 157,
-                "e\r\n": 158,
-                " wh": 159,
-                ere: 160,
-                " co": 161,
-                "e o": 162,
-                "a ": 163,
-                us: 164,
-                " d": 165,
-                ss: 166,
-                "\n\r\n": 167,
-                "\r\n\r": 168,
-                '="': 169,
-                " be": 170,
-                " e": 171,
-                "s a": 172,
-                ma: 173,
-                one: 174,
-                "t t": 175,
-                "or ": 176,
-                but: 177,
-                el: 178,
-                so: 179,
-                "l ": 180,
-                "e s": 181,
-                "s,": 182,
-                no: 183,
-                ter: 184,
-                " wa": 185,
-                iv: 186,
-                ho: 187,
-                "e a": 188,
-                " r": 189,
-                hat: 190,
-                "s t": 191,
-                ns: 192,
-                "ch ": 193,
-                wh: 194,
-                tr: 195,
-                ut: 196,
-                "/": 197,
-                have: 198,
-                "ly ": 199,
-                ta: 200,
-                " ha": 201,
-                " on": 202,
-                tha: 203,
-                "-": 204,
-                " l": 205,
-                ati: 206,
-                "en ": 207,
-                pe: 208,
-                " re": 209,
-                there: 210,
-                ass: 211,
-                si: 212,
-                " fo": 213,
-                wa: 214,
-                ec: 215,
-                our: 216,
-                who: 217,
-                its: 218,
-                z: 219,
-                fo: 220,
-                rs: 221,
-                ">": 222,
-                ot: 223,
-                un: 224,
-                "<": 225,
-                im: 226,
-                "th ": 227,
-                nc: 228,
-                ate: 229,
-                "><": 230,
-                ver: 231,
-                ad: 232,
-                " we": 233,
-                ly: 234,
-                ee: 235,
-                " n": 236,
-                id: 237,
-                " cl": 238,
-                ac: 239,
-                il: 240,
-                "</": 241,
-                rt: 242,
-                " wi": 243,
-                div: 244,
-                "e, ": 245,
-                " it": 246,
-                whi: 247,
-                " ma": 248,
-                ge: 249,
-                x: 250,
-                "e c": 251,
-                men: 252,
-                ".com": 253
-            }, e.reverse_codebook = [ " ", "the", "e", "t", "a", "of", "o", "and", "i", "n", "s", "e ", "r", " th", " t", "in", "he", "th", "h", "he ", "to", "\r\n", "l", "s ", "d", " a", "an", "er", "c", " o", "d ", "on", " of", "re", "of ", "t ", ", ", "is", "u", "at", "   ", "n ", "or", "which", "f", "m", "as", "it", "that", "\n", "was", "en", "  ", " w", "es", " an", " i", "\r", "f ", "g", "p", "nd", " s", "nd ", "ed ", "w", "ed", "http://", "for", "te", "ing", "y ", "The", " c", "ti", "r ", "his", "st", " in", "ar", "nt", ",", " to", "y", "ng", " h", "with", "le", "al", "to ", "b", "ou", "be", "were", " b", "se", "o ", "ent", "ha", "ng ", "their", '"', "hi", "from", " f", "in ", "de", "ion", "me", "v", ".", "ve", "all", "re ", "ri", "ro", "is ", "co", "f t", "are", "ea", ". ", "her", " m", "er ", " p", "es ", "by", "they", "di", "ra", "ic", "not", "s, ", "d t", "at ", "ce", "la", "h ", "ne", "as ", "tio", "on ", "n t", "io", "we", " a ", "om", ", a", "s o", "ur", "li", "ll", "ch", "had", "this", "e t", "g ", "e\r\n", " wh", "ere", " co", "e o", "a ", "us", " d", "ss", "\n\r\n", "\r\n\r", '="', " be", " e", "s a", "ma", "one", "t t", "or ", "but", "el", "so", "l ", "e s", "s,", "no", "ter", " wa", "iv", "ho", "e a", " r", "hat", "s t", "ns", "ch ", "wh", "tr", "ut", "/", "have", "ly ", "ta", " ha", " on", "tha", "-", " l", "ati", "en ", "pe", " re", "there", "ass", "si", " fo", "wa", "ec", "our", "who", "its", "z", "fo", "rs", ">", "ot", "un", "<", "im", "th ", "nc", "ate", "><", "ver", "ad", " we", "ly", "ee", " n", "id", " cl", "ac", "il", "</", "rt", " wi", "div", "e, ", " it", "whi", " ma", "ge", "x", "e c", "men", ".com" ], 
-            e.flush_verbatim = function(e) {
+			return e.codebook = (function () {
+				 [ " ", "the", "e", "t", "a", "of", "o", "and", "i", "n", "s", "e ", "r", " th", " t", "in", "he", "th", "h", "he ", "to", "\r\n", "l", "s ", "d", " a", "an", "er", "c", " o", "d ", "on", " of", "re", "of ", "t ", ", ", "is", "u", "at", "   ", "n ", "or", "which", "f", "m", "as", "it", "that", "\n", "was", "en", "  ", " w", "es", " an", " i", "\r", "f ", "g", "p", "nd", " s", "nd ", "ed ", "w", "ed", "http://", "for", "te", "ing", "y ", "The", " c", "ti", "r ", "his", "st", " in", "ar", "nt", ",", " to", "y", "ng", " h", "with", "le", "al", "to ", "b", "ou", "be", "were", " b", "se", "o ", "ent", "ha", "ng ", "their", '"', "hi", "from", " f", "in ", "de", "ion", "me", "v", ".", "ve", "all", "re ", "ri", "ro", "is ", "co", "f t", "are", "ea", ". ", "her", " m", "er ", " p", "es ", "by", "they", "di", "ra", "ic", "not", "s, ", "d t", "at ", "ce", "la", "h ", "ne", "as ", "tio", "on ", "n t", "io", "we", " a ", "om", ", a", "s o", "ur", "li", "ll", "ch", "had", "this", "e t", "g ", "e\r\n", " wh", "ere", " co", "e o", "a ", "us", " d", "ss", "\n\r\n", "\r\n\r", '="', " be", " e", "s a", "ma", "one", "t t", "or ", "but", "el", "so", "l ", "e s", "s,", "no", "ter", " wa", "iv", "ho", "e a", " r", "hat", "s t", "ns", "ch ", "wh", "tr", "ut", "/", "have", "ly ", "ta", " ha", " on", "tha", "-", " l", "ati", "en ", "pe", " re", "there", "ass", "si", " fo", "wa", "ec", "our", "who", "its", "z", "fo", "rs", ">", "ot", "un", "<", "im", "th ", "nc", "ate", "><", "ver", "ad", " we", "ly", "ee", " n", "id", " cl", "ac", "il", "</", "rt", " wi", "div", "e, ", " it", "whi", " ma", "ge", "x", "e c", "men", ".com" ].reduce(function(acc, key, i) {
+					acc[key] = i;
+					return acc;
+				}, {})
+		    }),
+			e.reverse_codebook = [ " ", "the", "e", "t", "a", "of", "o", "and", "i", "n", "s", "e ", "r", " th", " t", "in", "he", "th", "h", "he ", "to", "\r\n", "l", "s ", "d", " a", "an", "er", "c", " o", "d ", "on", " of", "re", "of ", "t ", ", ", "is", "u", "at", "   ", "n ", "or", "which", "f", "m", "as", "it", "that", "\n", "was", "en", "  ", " w", "es", " an", " i", "\r", "f ", "g", "p", "nd", " s", "nd ", "ed ", "w", "ed", "http://", "for", "te", "ing", "y ", "The", " c", "ti", "r ", "his", "st", " in", "ar", "nt", ",", " to", "y", "ng", " h", "with", "le", "al", "to ", "b", "ou", "be", "were", " b", "se", "o ", "ent", "ha", "ng ", "their", '"', "hi", "from", " f", "in ", "de", "ion", "me", "v", ".", "ve", "all", "re ", "ri", "ro", "is ", "co", "f t", "are", "ea", ". ", "her", " m", "er ", " p", "es ", "by", "they", "di", "ra", "ic", "not", "s, ", "d t", "at ", "ce", "la", "h ", "ne", "as ", "tio", "on ", "n t", "io", "we", " a ", "om", ", a", "s o", "ur", "li", "ll", "ch", "had", "this", "e t", "g ", "e\r\n", " wh", "ere", " co", "e o", "a ", "us", " d", "ss", "\n\r\n", "\r\n\r", '="', " be", " e", "s a", "ma", "one", "t t", "or ", "but", "el", "so", "l ", "e s", "s,", "no", "ter", " wa", "iv", "ho", "e a", " r", "hat", "s t", "ns", "ch ", "wh", "tr", "ut", "/", "have", "ly ", "ta", " ha", " on", "tha", "-", " l", "ati", "en ", "pe", " re", "there", "ass", "si", " fo", "wa", "ec", "our", "who", "its", "z", "fo", "rs", ">", "ot", "un", "<", "im", "th ", "nc", "ate", "><", "ver", "ad", " we", "ly", "ee", " n", "id", " cl", "ac", "il", "</", "rt", " wi", "div", "e, ", " it", "whi", " ma", "ge", "x", "e c", "men", ".com" ],			
+	        e.flush_verbatim = function(e) {
                 var r, t, n, o;
                 for (t = [], e.length > 1 ? (t.push(String.fromCharCode(255)), t.push(String.fromCharCode(e.length - 1))) : t.push(String.fromCharCode(254)), 
                 n = 0, o = e.length; n < o; n++) r = e[n], t.push(r);
@@ -580,11 +416,12 @@ var localDataStorage = function(e) {
             } else C(e) && (t = p(localStorage.getItem(e)));
             return t *= 2;
         }, Z = function(e, r, t) {
+			var e1 = decodeURI(e);
             var n = "", o = k(r)[0], i = w(o) + "", a = M(i), f = Number(a) + k(t)[0] + k(r)[0], u = f + "", s = l(u), c = o + Number((f + "").charAt(0)) + Number((f + "").charAt(1)) + Number((f + "").charAt(2)) + Number(i.charAt(0)), d = S(k(t)[1]) + S(k(r)[1]) + c, h = J(), g = k(r)[1], v = 0, m = 0, y = 0, b = 0;
-            e += "";
+            e1 += "";
             for (var p = 0; p < d; p++) s();
-            for (var p = 0, O = e.length; p < O; p++) v = Math.floor(257 * s()) + 0, y = v, 
-            b = o, m = Math.floor(h(g) * (b - y + 1)) + y, s() < .537 ? n += String.fromCharCode(v ^ e.charCodeAt(p)) : n += String.fromCharCode(m ^ e.charCodeAt(p));
+            for (var p = 0, O = e1.length; p < O; p++) v = Math.floor(257 * s()) + 0, y = v, 
+            b = o, m = Math.floor(h(g) * (b - y + 1)) + y, s() < .537 ? n += String.fromCharCode(v ^ e1.charCodeAt(p)) : n += String.fromCharCode(m ^ e1.charCodeAt(p));
             return n;
         }, H = function() {
             return "localDataStorage 1.2.0 using " + s;
@@ -691,7 +528,7 @@ var localDataStorage = function(e) {
             if (void 0 === e) throw new Error("Key is undefined");
             if (void 0 === r) throw new Error("Key's value is undefined");
             var n = "", o = null === this.forceget(e) ? void 0 : this.forceget(e), i = this.showtype(e), a = "";
-            r = h(r)[0], void 0 === t ? (r = P(r, f, e), r = Z(r, f, e), n = " using global scramble key") : (r = P(r, t, e), 
+	        r = h(r)[0], void 0 === t ? (r = P(r, f, e), r = Z(r, f, e), n = " using global scramble key") : (r = P(r, t, e), 
             r = Z(r, t, e), n = " using user scramble key"), j(E(e), r), a = this.forceget(e), 
             o !== a && (void 0 === o ? D("create new key" + n, "safeset", e, o, a, i, "scrambled key", x()) : D("key value change" + n, "safeset", e, o, a, i, "scrambled key", x()));
         }, H.set = function(e, r) {
